@@ -48,35 +48,35 @@ impl Game {
 
     // 1 try at spawning enemies
     pub fn spawn_enemies(&mut self) {
-        self.enemies_spawn_seed = khash(self.enemies_spawn_seed);
+        // self.enemies_spawn_seed = khash(self.enemies_spawn_seed);
 
-        let n = 4;
-        let nscale = 0.3;
-        let gw = LEVEL_W / n as f32;
-        let gh = LEVEL_H / n as f32;
-        for i in 0..n {
-            for j in 0..n {
-                let si = khash(self.enemies_spawn_seed + i * 1231234517 + j * 120312497 + 12312767);
-                if krand(si * 1231237) < 0.8 {continue;}
-                let oy = gh * krand(si * 12312377);
-                let ox = gw * krand(si * 12301297);
-                let x = i as f32 * gw + ox - LEVEL_W/2.0;
-                let y = j as f32 * gh + oy - LEVEL_H/2.0;
-                let richness = 1.7 * noise2(x * nscale, y * nscale, (self.level_seed * 12312397) as u32) - 0.3;
-                let roll = krand(si);
+        // let n = 4;
+        // let nscale = 0.3;
+        // let gw = LEVEL_W / n as f32;
+        // let gh = LEVEL_H / n as f32;
+        // for i in 0..n {
+        //     for j in 0..n {
+        //         let si = khash(self.enemies_spawn_seed + i * 1231234517 + j * 120312497 + 12312767);
+        //         if krand(si * 1231237) < 0.8 {continue;}
+        //         let oy = gh * krand(si * 12312377);
+        //         let ox = gw * krand(si * 12301297);
+        //         let x = i as f32 * gw + ox - LEVEL_W/2.0;
+        //         let y = j as f32 * gh + oy - LEVEL_H/2.0;
+        //         let richness = 1.7 * noise2(x * nscale, y * nscale, (self.level_seed * 12312397) as u32) - 0.3;
+        //         let roll = krand(si);
 
-                let score = richness * roll * (0.25*self.t_level + 10.0);
+        //         let score = richness * roll * (0.25*self.t_level + 10.0);
 
-                if score > 2.0 {
-                    self.enemy_x.push(x);
-                    self.enemy_y.push(y);
-                    self.enemy_type.push(0);
-                    self.enemy_birth_t.push(self.t);
-                    self.enemy_attack_t.push(self.t);
-                    self.enemy_hp.push(3.5);
-                }
-            }
-        }
+        //         if score > 2.0 {
+        //             self.enemy_x.push(x);
+        //             self.enemy_y.push(y);
+        //             self.enemy_type.push(0);
+        //             self.enemy_birth_t.push(self.t);
+        //             self.enemy_attack_t.push(self.t);
+        //             self.enemy_hp.push(3.5);
+        //         }
+        //     }
+        // }
     }
 
     pub fn draw_enemies(&mut self) {
