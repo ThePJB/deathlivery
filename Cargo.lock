@@ -418,6 +418,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "deathlivery"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "assert_hex",
+ "bytemuck",
+ "cpal",
+ "glow",
+ "glutin",
+ "palette",
+ "png",
+ "ringbuf",
+ "winit",
+]
+
+[[package]]
 name = "dispatch"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -474,22 +490,6 @@ name = "fuchsia-cprng"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
-
-[[package]]
-name = "gjdgjg"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "assert_hex",
- "bytemuck",
- "cpal",
- "glow",
- "glutin",
- "palette",
- "png",
- "ringbuf",
- "winit",
-]
 
 [[package]]
 name = "gl_generator"

@@ -123,7 +123,7 @@ impl Game {
         let xres = 800i32;
         let yres = 800i32;
         let window_builder = glutin::window::WindowBuilder::new()
-            .with_title("GJDGJG")
+            .with_title("Deathlivery")
             .with_inner_size(glutin::dpi::PhysicalSize::new(xres, yres));
         let window = glutin::ContextBuilder::new()
             .with_vsync(true)

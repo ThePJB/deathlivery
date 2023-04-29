@@ -2,6 +2,8 @@ use crate::game::*;
 use crate::math::*;
 use crate::sound::fail_sound;
 
+// yea i should just make it like int levels and do a to float interpretation
+
 #[derive(Clone)]
 pub struct Upgrade {
     add: [f32; 8],
