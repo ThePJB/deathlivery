@@ -16,7 +16,6 @@ use cpal::traits::*;
 use ringbuf::*;
 
 use crate::player;
-use crate::upgrade::*;
 use crate::sound::*;
 
 
@@ -53,39 +52,10 @@ pub struct Game {
     pub screen_geometry_unscaled: VertexBuffer,
     pub world_geometry: VertexBuffer,
 
-    pub in_portal: bool,
-
-    pub player_pos: V2,
-    pub player_vel: V2,
-    pub player_succ: f32,
     pub player_hp: f32,
     pub player_hp_max: f32,
-    pub player_hp_regen: f32,
-    pub player_speed: f32,
-    pub player_t_shoot: f32,
-    pub player_cooldown: f32,
-    pub player_damage: f32,
-    pub player_proj_speed: f32,
-
-    pub warp_price: usize,
-    pub reroll_price: usize,
-    pub upgrade_seed: [usize; 3],
-
-    pub upgrade_common: Vec<Upgrade>,
-    pub upgrade_uncommon: Vec<Upgrade>,
-    pub upgrade_rare: Vec<Upgrade>,
 
     pub seed: usize,
-    pub level_seed: usize,
-    pub enemies_spawn_seed: usize,
-
-    pub gem_x: Vec<f32>,
-    pub gem_y: Vec<f32>,
-    pub gem_vx: Vec<f32>,
-    pub gem_vy: Vec<f32>,
-    pub gem_type: Vec<usize>,
-
-    pub gems: usize,
 
     pub spawn_enemies_counter: f32,
 
@@ -101,11 +71,19 @@ pub struct Game {
     pub enemy_projectile_vx: Vec<f32>,
     pub enemy_projectile_vy: Vec<f32>,
     pub enemy_projectile_type: Vec<usize>,
+
+    pub player_verlet_x: Vec<f32>,
+    pub player_verlet_y: Vec<f32>,
+    pub player_verlet_vx: Vec<f32>,
+    pub player_verlet_vy: Vec<f32>,
     
     pub player_projectile_x: Vec<f32>,
     pub player_projectile_y: Vec<f32>,
     pub player_projectile_vx: Vec<f32>,
     pub player_projectile_vy: Vec<f32>,
+
+    pub player_steer: f32,
+    pub player_pos: V2,
 
 }
 
@@ -235,31 +213,9 @@ impl Game {
             t_last: Instant::now(),
             t: 0.0,
             t_level: 0.0,
-            in_portal: false,
-            player_pos: v2(0., 0.),
-            player_vel: v2(0., 0.),
-            player_succ: 0.5,
             player_hp: 1.0,
             player_hp_max: 1.0,
-            player_hp_regen: 0.01,
-            player_speed: 0.5,
-            player_t_shoot: -999.0, 
-            player_cooldown: 0.7,
-            player_damage: 0.5,
-            player_proj_speed: 1.5,
-            warp_price: 100,
-            reroll_price: 10,
             seed: initial_seed,
-            enemies_spawn_seed: khash(initial_seed * 1231247),
-            level_seed: khash(initial_seed * 129371237),
-            upgrade_seed: [khash(initial_seed * 123237), khash(initial_seed * 9123912397), khash(initial_seed * 231241257)],
-            gem_type: vec![],
-            gem_x: vec![],
-            gem_y: vec![],
-            gem_vx: vec![],
-            gem_vy: vec![],
-            gems: 0,
-            spawn_enemies_counter: 0.0,
             enemy_x: vec![],
             enemy_y: vec![],
             enemy_type: vec![],
@@ -271,14 +227,24 @@ impl Game {
             enemy_projectile_vx: vec![],
             enemy_projectile_vy: vec![],
             enemy_projectile_type: vec![],
+            spawn_enemies_counter: 0.0,
             player_projectile_x: vec![],
             player_projectile_y: vec![],
             player_projectile_vx: vec![],
             player_projectile_vy: vec![],
-            upgrade_common: upgrade_common(),
-            upgrade_uncommon: upgrade_uncommon(),
-            upgrade_rare: upgrade_rare(),
+            player_verlet_x: vec![], // todo put player at origin or whatever
+            player_verlet_y: vec![], // todo put player at origin or whatever
+            player_verlet_vx: vec![], // todo put player at origin or whatever
+            player_verlet_vy: vec![], // todo put player at origin or whatever
+            player_steer: 0.0,
+            player_pos: v2(0.0, 0.0),
         }
+    }
+
+    pub fn initialize(&mut self) {
+        // we would set player initial verlet points (that can be another method inside player.rs)
+        // delete all enemies, put initial enemies, etc
+
     }
 
     pub unsafe fn handle_event(&mut self, event: Event<()>) {
@@ -315,45 +281,13 @@ impl Game {
                             glutin::event::KeyboardInput {virtual_keycode: Some(code), state: ElementState::Pressed, ..} => {
                                 self.held_keys.insert(code);
                                 if self.player_hp < 0.0 {
-                                    self.restart();
+                                    self.initialize();
                                 }
                             },
                             glutin::event::KeyboardInput {virtual_keycode: Some(code), state: ElementState::Released, ..} => {
                                 self.held_keys.remove(&code);
                                 match code {
                                     VirtualKeyCode::Escape => {
-                                    },
-                                    VirtualKeyCode::Key1 => self.handle_upgrade(0),
-                                    VirtualKeyCode::Key2 => self.handle_upgrade(1),
-                                    VirtualKeyCode::Key3 => self.handle_upgrade(2),
-                                    VirtualKeyCode::R => {
-                                        if self.in_portal {
-                                            if self.gems >= self.reroll_price {
-                                                self.gems -= self.reroll_price;
-                                                self.upgrade_seed[0] = khash(self.upgrade_seed[0] * 12312541247);
-                                                self.upgrade_seed[1] = khash(self.upgrade_seed[1] * 1231377);
-                                                self.upgrade_seed[2] = khash(self.upgrade_seed[2] * 5438373737);
-                                            } else {
-                                                self.prod.push(fail_sound(self.t)).unwrap();
-                                            }
-                                        }
-                                    },
-                                    VirtualKeyCode::T => {
-                                        if self.in_portal {
-                                            self.in_portal = false;
-                                            // regenerate level
-                                            self.t_level = 0.0;
-                                            // regen gems etc
-                                            self.level_seed = khash(self.level_seed * 12412317);
-                                            self.populate_with_gems();
-                                        } else {
-                                            if self.gems >= self.warp_price {
-                                                self.gems -= self.warp_price;
-                                                self.in_portal = true;
-                                                self.zero_state();
-                                                self.player_pos = v2(0., 0.);
-                                            }
-                                        }
                                     },
                                     _ => {},
                                 }
@@ -381,9 +315,13 @@ impl Game {
 
         let aspect = self.xres as f32 / self.yres as f32;
 
-        if !self.in_portal && self.player_hp > 0.0 {
+        if self.player_hp > 0.0 {
             self.simulate(dt);
         }
+
+        let px = self.player_verlet_x.iter().sum::<f32>() / self.player_verlet_x.len() as f32;
+        let py = self.player_verlet_y.iter().sum::<f32>() / self.player_verlet_y.len() as f32;
+        self.player_pos = v2(px, py);
 
         let cam_x = self.player_pos.x;
         let cam_y = self.player_pos.y;
@@ -397,90 +335,12 @@ impl Game {
             self.screen_geometry_unscaled.put_string_centered("press any key to restart",  0.0, FNTH, FNTW/aspect, FNTH, 0.1, v4(1., 1., 1., 1.));
 
         }
-
-        if self.in_portal {
-            let mut y = -1.0 + FNTH;
-            self.screen_geometry_unscaled.put_rect(v4(-1., y, FNTW/aspect* 8.0, FNTH*8.0), v4(0., 0., 1., 1.), 0.8, v4(0.5, 0.5, 0.5, 0.8), 0);
-            self.screen_geometry_unscaled.put_rect(v4(-1., -1., 2., 2.), v4(0., 0., 1., 1.,), 0.9, v4(0., 0., 0., 1.), 0);
-            self.screen_geometry_unscaled.put_string_left(&format!("A{}", self.gems),  -1.0, y, FNTW/aspect, FNTH, 0.1, v4(1., 1., 1., 1.)); y += FNTH;
-            self.screen_geometry_unscaled.put_string_left(&format!("B{}", self.player_damage),  -1.0, y, FNTW/aspect, FNTH, 0.1, v4(1., 1., 1., 1.)); y += FNTH;
-            self.screen_geometry_unscaled.put_string_left(&format!("C{}", self.player_hp_max),  -1.0, y, FNTW/aspect, FNTH, 0.1, v4(1., 1., 1., 1.)); y += FNTH;
-            self.screen_geometry_unscaled.put_string_left(&format!("D{}", self.player_hp_regen),  -1.0, y, FNTW/aspect, FNTH, 0.1, v4(1., 1., 1., 1.)); y += FNTH;
-            self.screen_geometry_unscaled.put_string_left(&format!("E{}", self.player_speed),  -1.0, y, FNTW/aspect, FNTH, 0.1, v4(1., 1., 1., 1.)); y += FNTH;
-            self.screen_geometry_unscaled.put_string_left(&format!("F{}", self.player_succ),  -1.0, y, FNTW/aspect, FNTH, 0.1, v4(1., 1., 1., 1.)); y += FNTH;
-            self.screen_geometry_unscaled.put_string_left(&format!("G{}", self.player_proj_speed),  -1.0, y, FNTW/aspect, FNTH, 0.1, v4(1., 1., 1., 1.)); y += FNTH;
-            self.screen_geometry_unscaled.put_string_left(&format!("H{}", self.player_cooldown),  -1.0, y, FNTW/aspect, FNTH, 0.1, v4(1., 1., 1., 1.)); y += FNTH;
-
-            y += FNTH;
-            y += FNTH;
-            y += FNTH;
-            
-            self.screen_geometry_unscaled.put_rect(v4(-1., y, FNTW/aspect* 8.0, FNTH*2.0), v4(0., 0., 1., 1.), 0.8, v4(0.5, 0.5, 0.5, 0.8), 0);
-            self.screen_geometry_unscaled.put_string_left("Z[r]",  -1.0, y, FNTW/aspect, FNTH, 0.1, v4(1., 1., 1., 1.)); y += FNTH;
-            self.screen_geometry_unscaled.put_string_left(&format!("A{}", self.reroll_price),  -1.0, y, FNTW/aspect, FNTH, 0.1, v4(1., 1., 1., 1.)); y += FNTH;
-
-            y += FNTH;
-            self.screen_geometry_unscaled.put_rect(v4(-1., y, FNTW/aspect* 8.0, FNTH*1.0), v4(0., 0., 1., 1.), 0.8, v4(0.5, 0.5, 0.5, 0.8), 0);
-            self.screen_geometry_unscaled.put_string_left("cont.[t]",  -1.0, y, FNTW/aspect, FNTH, 0.1, v4(1., 1., 1., 1.)); y += FNTH;
-            
-            let mut y = FNTH*2.0;
-            let x = -1.0 + FNTW/aspect*9.0;
-            self.screen_geometry_unscaled.put_rect(v4(x, y, FNTW/aspect* 30.0, FNTH*7.0), v4(0., 0., 1., 1.), 0.8, v4(0.5, 0.5, 0.5, 0.8), 0);
-
-            y += FNTH;
-            self.screen_geometry_unscaled.put_string_left("[1] ", x, y, FNTW/aspect, FNTH, 0.1, v4(1., 1., 1., 1.)); self.disp_upgrade(x + 4.0*FNTW/aspect, y, FNTW/aspect, FNTH, 0.8, self.roll_upgrade(self.upgrade_seed[0])); y += FNTH;
-            y += FNTH;
-            self.screen_geometry_unscaled.put_string_left("[2] ", x, y, FNTW/aspect, FNTH, 0.1, v4(1., 1., 1., 1.)); self.disp_upgrade(x + 4.0*FNTW/aspect, y, FNTW/aspect, FNTH, 0.8, self.roll_upgrade(self.upgrade_seed[1])); y += FNTH;
-            y += FNTH;
-            self.screen_geometry_unscaled.put_string_left("[3] ", x, y, FNTW/aspect, FNTH, 0.1, v4(1., 1., 1., 1.)); self.disp_upgrade(x + 4.0*FNTW/aspect, y, FNTW/aspect, FNTH, 0.8, self.roll_upgrade(self.upgrade_seed[2])); y += FNTH;
-            
-            // warp zone panel
-
-            // spinning player
-            self.draw_player(0., 0., 0.1, 3.0*self.t, false);
-
-            if self.t % 2.0 < 1.0 {
-                self.screen_geometry_unscaled.put_string_centered("-- warp zone --",  0.0, -1.0, FNTW/aspect, FNTH, 0.1, v4(1., 1., 1., 1.));
-            }
-
-            // draw cool white lines
-            for i in 0..20 {
-                let t_lines = self.t * 2.0;
-                let si = khash(self.seed + i * 1293124147);
-                let phase_i = krand(si) * (2.0*PI);
-                let cycle_i = ((t_lines - phase_i) / (2.0*PI)).floor() as usize;
-                let sc = khash(si + 1231237 * cycle_i);
-                let x = krand(sc) * 2.0 - 1.0;
-                let phase = (t_lines - phase_i) % (2.0*PI);
-                let y = (((phase / (2.0*PI)) * 2.0 - 1.0) - 0.1)*1.1;
-                self.screen_geometry_unscaled.put_rect(v4(x, y, 0.01, 0.1), v4(0., 0., 1., 1.,), 0.3, v4(1., 1., 1., 1.), 0);
-            }
-
-
-        } else {
-            // normal level drawing
-            self.draw_level();
-            self.draw_player(self.player_pos.x, self.player_pos.y, 0.1, 0.0, true);
-            self.draw_enemies();
-            self.draw_gems();
-            self.draw_enemy_projectiles();
-            self.draw_player_projectiles();
-
-            // self.screen_geometry.put_rect(v4(-1., -1., 1., 1.), v4(0., 0., 1., 1.), 0.2, v4(1., 1., 1., 1.), 5);
-
-            // draw gem count
-            self.screen_geometry_unscaled.put_rect(v4(-1., -1., 0.5, FNTH), v4(0., 0., 1., 1.), 0.1, v4(0., 0., 0., 1.), 0);
-            self.screen_geometry_unscaled.put_rect(v4(-1., -1., 0.5*(self.player_hp/self.player_hp_max), FNTH), v4(0., 0., 1., 1.), 0.1, v4(1., 0., 0., 1.), 0);
-            self.screen_geometry_unscaled.put_string_left(&format!("A{}", self.gems),  -1.0, -1.0 + FNTH, FNTW/aspect, FNTH, 0.1, v4(1., 1., 1., 1.));
-            // self.screen_geometry.put_string_left(&format!("hp: {} gems: {}",(self.player_hp * 100.0).round(),  self.gems),  -1.0, -1.0, FNTW, FNTH, 0.1, v4(1., 1., 1., 1.));
-            
-            if self.gems >= self.warp_price {
-                    self.screen_geometry_unscaled.put_string_centered(&format!("warp available: A{} [t]", self.warp_price),  0.0, 1.0 - FNTH, FNTW/aspect, FNTH, 0.1, v4(1., 1., 1., 1.));
-            }
-
-        }
-        // self.prod.push(Sound { id: 1, birthtime: self.t, elapsed: 0.0, remaining: 0.1, magnitude: 0.1, mag_exp: 0.999, frequency: 440.0 * 3./2., freq_exp: 1.0, wait: 0.0, phase: 0.0 }).unwrap();
-
+        // normal level drawing
+        self.draw_level();
+        // self.draw_player(0.1, 0.0, true);
+        self.draw_enemies();
+        self.draw_enemy_projectiles();
+        self.draw_player_projectiles();
 
         self.gl.uniform_1_f32(self.gl.get_uniform_location(self.program, "time").as_ref(), self.t);
 
@@ -531,7 +391,6 @@ impl Game {
 
         self.update_player(dt);
         self.update_player_projectiles(dt);
-        self.update_gems(dt);
 
         if self.spawn_enemies_counter > 1.0 {
             self.spawn_enemies_counter -= 1.0;
@@ -548,51 +407,6 @@ impl Game {
         // or just place rocks and shit as well as da gems
         self.world_geometry.put_rect(v4(-LEVEL_W/2.0, -LEVEL_H/2.0, LEVEL_W, LEVEL_H,), v4(0., 0., 1., 1.), 0.9, world_colour, 0);
     }    
-
-    pub fn restart(&mut self) {
-        self.player_pos = v2(0., 0.);
-        self.player_vel = v2(0., 0.);
-        self.player_succ = 0.5;
-        self.player_hp = 1.0;
-        self.player_hp_max = 1.0;
-        self.player_hp_regen = 0.01;
-        self.player_speed = 0.5;
-        self.player_t_shoot = -999.0;
-        self.player_cooldown = 0.7;
-        self.player_damage = 0.5;
-        self.player_proj_speed = 1.5;
-        self.gems = 0;
-        self.warp_price = 500;
-        self.reroll_price = 10;
-        self.seed = khash(self.seed + 1231237197);
-        self.enemies_spawn_seed = khash(self.enemies_spawn_seed * 1231247 + 12312317);
-        self.level_seed = khash(self.level_seed * 129371237 + 231417);
-        self.zero_state();
-        self.populate_with_gems();
-    }
-
-    pub fn zero_state(&mut self) {
-        self.enemy_x.clear();
-        self.enemy_y.clear();
-        self.enemy_type.clear();
-        self.enemy_birth_t.clear();
-        self.enemy_attack_t.clear();
-        self.enemy_hp.clear();
-        self.enemy_projectile_x.clear();
-        self.enemy_projectile_y.clear();
-        self.enemy_projectile_vx.clear();
-        self.enemy_projectile_vy .clear();
-        self.enemy_projectile_type.clear();
-        self.player_projectile_x.clear();
-        self.player_projectile_y.clear();
-        self.player_projectile_vx.clear();
-        self.player_projectile_vy.clear();
-        self.gem_x.clear();
-        self.gem_y.clear();
-        self.gem_vx.clear();
-        self.gem_vy.clear();
-        self.gem_type.clear();
-    }
 }
 
 

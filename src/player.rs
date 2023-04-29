@@ -69,7 +69,9 @@ impl Game {
         let s3 = b1.lerp(b3, 0.5);
         let s4 = b1.lerp(b4, 0.5);
 
-        let player_transform = mat_srt(self.player_pos.x, self.player_pos.y, scale, theta);
+        // no transform just calculate off verlet points
+        // let player_x = 0.0; // make avg of players
+        // let player_transform = mat_srt(self.player_pos.x, self.player_pos.y, scale, theta);
 
         let body_colour = v4(20.0, 0.5, 0.85, 1.0).hsv_to_rgb();
         let scarf_colour = v4(180.0, 0.2, 0.7, 1.0).hsv_to_rgb();
@@ -77,10 +79,10 @@ impl Game {
         let eye_colour = v4(1., 1., 1., 1.);
         let player_depth = 0.5;
     
-        self.world_geometry.put_quad_transform(b1, v2(0., 0.), b2, v2(0., 0.), b3, v2(0., 0.), b4, v2(0., 0.), player_depth, body_colour, 0, &player_transform);
-        self.world_geometry.put_quad_transform(s1, v2(0., 0.), s2, v2(0., 0.), s3, v2(0., 0.), s4, v2(0., 0.), player_depth, scarf_colour, 0, &player_transform);
-        self.world_geometry.put_quad_transform(h1, v2(0., 0.), h2, v2(0., 0.), h3, v2(0., 0.), h4, v2(0., 0.), player_depth, scarf_colour, 0, &player_transform);
-        self.world_geometry.put_quad_transform(f1, v2(0., 0.), f2, v2(0., 0.), f3, v2(0., 0.), f4, v2(0., 0.), player_depth, face_colour, 0, &player_transform);
+        // self.world_geometry.put_quad_transform(b1, v2(0., 0.), b2, v2(0., 0.), b3, v2(0., 0.), b4, v2(0., 0.), player_depth, body_colour, 0, &player_transform);
+        // self.world_geometry.put_quad_transform(s1, v2(0., 0.), s2, v2(0., 0.), s3, v2(0., 0.), s4, v2(0., 0.), player_depth, scarf_colour, 0, &player_transform);
+        // self.world_geometry.put_quad_transform(h1, v2(0., 0.), h2, v2(0., 0.), h3, v2(0., 0.), h4, v2(0., 0.), player_depth, scarf_colour, 0, &player_transform);
+        // self.world_geometry.put_quad_transform(f1, v2(0., 0.), f2, v2(0., 0.), f3, v2(0., 0.), f4, v2(0., 0.), player_depth, face_colour, 0, &player_transform);
     
         let p_leye = f4.lerp(f2, 0.35);
         let p_reye = f4.lerp(f2, 0.65); 
@@ -130,7 +132,7 @@ impl Game {
                 let vp = ep - v2(self.player_projectile_x[idx], self.player_projectile_y[idx]);
                 if vp.norm() < 0.3 {
                     kill = true;
-                    self.enemy_hp[enemy_idx] -= self.player_damage;
+                    // self.enemy_hp[enemy_idx] -= self.player_damage; // how much damage
                     self.prod.push(Sound { id: 1, birthtime: self.t, elapsed: 0.0, remaining: 0.2, magnitude: 0.1, mag_exp: 0.9995, frequency: 660.0 * 5./6. , freq_exp: 1.0, wait: 0.0, phase: 0.0, samp: 0 }).unwrap();
                 }
             }
